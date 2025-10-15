@@ -1,0 +1,86 @@
+/* Estilos específicos para el dashboard */
+.sidebar-dark-primary {
+    background-color: var(--verde-oscuro) !important;
+}
+
+.brand-link {
+    border-bottom: 1px solid var(--verde-claro);
+}
+
+.user-panel {
+    border-bottom: 1px solid var(--verde-claro);
+}
+
+.small-box {
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.small-box:hover {
+    transform: translateY(-5px);
+}
+
+.bg-success {
+    background-color: var(--verde-primario) !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+/* Cards personalizadas */
+.agri-card {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.agri-card .card-header {
+    background: linear-gradient(135deg, var(--verde-primario) 0%, var(--verde-secundario) 100%);
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+/* Gráficos */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Lista de actividades */
+.products-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.products-list>.item {
+    border-radius: 5px;
+    background: #f8f9fa;
+    padding: 10px 0;
+    border-left: 3px solid var(--verde-primario);
+}
+
+/* Badges de estado */
+.badge-estado {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+}
+
+.badge-completado {
+    background-color: var(--verde-claro);
+    color: white;
+}
+
+.badge-proceso {
+    background-color: #ffc107;
+    color: black;
+}
+
+.badge-pendiente {
+    background-color: #dc3545;
+    color: white;
+}

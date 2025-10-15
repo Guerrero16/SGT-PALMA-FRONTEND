@@ -1,0 +1,103 @@
+:root {
+  /* Paleta de verdes agrícolas */
+  --verde-primario: #2E7D32;
+  --verde-secundario: #4CAF50;
+  --verde-claro: #81C784;
+  --verde-oscuro: #1B5E20;
+  --verde-bg: #E8F5E9;
+  --verde-hover: #388E3C;
+  --texto-oscuro: #2E3715;
+}
+
+/* Personalización de AdminLTE con colores verdes */
+.bg-primary {
+  background-color: var(--verde-primario) !important;
+}
+
+.btn-primary {
+  background-color: var(--verde-primario);
+  border-color: var(--verde-primario);
+}
+
+.btn-primary:hover {
+  background-color: var(--verde-hover);
+  border-color: var(--verde-hover);
+}
+
+.text-primary {
+  color: var(--verde-primario) !important;
+}
+
+.sidebar {
+  background-color: var(--verde-oscuro);
+}
+
+.navbar-white {
+  background-color: var(--verde-primario);
+}
+
+/* Personalización específica para agricultura */
+.agri-card {
+  border-left: 4px solid var(--verde-primario);
+  background: linear-gradient(135deg, var(--verde-bg) 0%, #ffffff 100%);
+}
+
+.agri-stats {
+  background: var(--verde-bg);
+  border-radius: 10px;
+  padding: 15px;
+}
+
+/* Login personalizado */
+.login-logo {
+  color: var(--verde-primario) !important;
+  font-weight: 700;
+}
+
+.login-logo img {
+  max-width: 80px;
+  margin-bottom: 15px;
+}
+
+/* Estilos personalizados para SweetAlert2 */
+.swal2-popup {
+  border-radius: 15px !important;
+  font-family: 'Source Sans Pro', sans-serif !important;
+}
+
+.swal2-title {
+  color: var(--verde-oscuro) !important;
+  font-weight: 600 !important;
+}
+
+.swal2-confirm.btn-success {
+  background-color: var(--verde-primario) !important;
+  border-color: var(--verde-primario) !important;
+}
+
+.swal2-confirm.btn-success:hover {
+  background-color: var(--verde-oscuro) !important;
+  border-color: var(--verde-oscuro) !important;
+}
+
+.swal2-cancel.btn-secondary {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+}
+
+/* Animaciones personalizadas */
+.swal2-show {
+  animation: swal2-show 0.3s !important;
+}
+
+@keyframes swal2-show {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
