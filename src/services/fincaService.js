@@ -25,6 +25,26 @@ class FincaService {
         }
     }
 
+    async getFincasByEmpresa(id_empresa) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/empresas/${id_empresa}/fincas`, {
+                method: 'GET',
+                headers: AuthService.getAuthHeaders(),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return Array.isArray(data) ? data : [];
+        } catch (error) {
+            console.error('Error fetching fincas por empresa:', error);
+            throw error;
+        }
+    }
+
+
     async createFinca(fincaData) {
         // ✅ Crear una clave única para este request
         const requestKey = `create-${JSON.stringify(fincaData)}-${Date.now()}`;
@@ -64,10 +84,11 @@ class FincaService {
         } catch (error) {
             // ✅ Limpiar del mapa incluso en error
             this.pendingRequests.delete(requestKey);
-            console.error('Error creating finca:', error);
+            console.error('Error creando finca:', error);
             throw error;
         }
     }
+
 
     async updateFinca(id, fincaData) {
         const requestKey = `update-${id}-${Date.now()}`;
@@ -97,7 +118,7 @@ class FincaService {
 
         } catch (error) {
             this.pendingRequests.delete(requestKey);
-            console.error('Error updating finca:', error);
+            console.error('Error actualizando finca:', error);
             throw error;
         }
     }

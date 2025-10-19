@@ -175,6 +175,10 @@ class AuthService {
             cardBody.appendChild(alertDiv);
         }
     }
+    getToken() {
+        // Devuelve el token actual o el guardado en localStorage
+        return this.token || localStorage.getItem('authToken');
+    }
 
     logout() {
         localStorage.removeItem('authToken');

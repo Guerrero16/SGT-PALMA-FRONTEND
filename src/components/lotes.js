@@ -1,98 +1,53 @@
-// src/components/lotes.js
 import LoteService from '../services/loteService.js';
 import FincaService from '../services/fincaService.js';
+import Swal from 'sweetalert2';
 
 class LotesComponent {
     constructor() {
-        this.lotes = [];
+        this.container = null;
+        this.loteEditando = null;
         this.fincas = [];
-        this.filteredLotes = [];
+        this.eventListenersBound = false;
     }
 
     async init(container) {
         this.container = container;
+        await this.loadFincas();
         await this.render();
-        await this.loadData();
-        this.setupEventListeners();
+        await this.loadLotes();
+
+        if (!this.eventListenersBound) {
+            this.bindEvents();
+            this.eventListenersBound = true;
+        }
     }
 
-    async loadData() {
+    async loadFincas() {
         try {
-            this.showLoading();
-
-            // Cargar datos en paralelo
-            const [lotesData, fincasData] = await Promise.all([
-                LoteService.getLotes(),
-                FincaService.getFincas()
-            ]);
-
-            this.lotes = lotesData;
-            this.fincas = fincasData;
-            this.filteredLotes = [...this.lotes];
-
-            await this.renderTable();
+            this.fincas = await FincaService.getFincas();
         } catch (error) {
-            console.error('Error loading data:', error);
-            this.showError('Error al cargar los datos: ' + error.message);
-        }
-    }
-
-    showLoading() {
-        const tableContainer = this.container.querySelector('#lotes-table-container');
-        if (tableContainer) {
-            tableContainer.innerHTML = `
-                <div class="d-flex justify-content-center align-items-center" style="height: 100px">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    showError(message) {
-        const tableContainer = this.container.querySelector('#lotes-table-container');
-        if (tableContainer) {
-            tableContainer.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    ${message}
-                </div>
-            `;
+            console.error('Error cargando fincas:', error);
+            this.fincas = [];
         }
     }
 
     async render() {
         this.container.innerHTML = `
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h3 class="card-title mb-0">
-                                <i class="fas fa-tags me-2"></i>
-                                Gestión de Lotes
-                            </h3>
-                            <button class="btn btn-light btn-sm" id="btnNuevoLote">
-                                <i class="fas fa-plus me-2"></i>
-                                Nuevo Lote
-                            </button>
-                        </div>
-                        <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Buscar lotes..." id="searchInput">
-                                        <button class="btn btn-outline-secondary" type="button" id="btnSearch">
-                                            <i class="fas fa-search"></i>
-                                        </button>
-                                    </div>
-                                </div>
+            <div class="container-fluid">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card agri-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h3 class="card-title m-0">
+                                    <i class="fas fa-seedling me-2"></i> Gestión de Lotes
+                                </h3>
+                                <button class="btn btn-success" id="btnNuevoLote">
+                                    <i class="fas fa-plus me-1"></i> Nuevo Lote
+                                </button>
                             </div>
-                            <div id="lotes-table-container">
-                                <div class="text-center py-4">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Cargando...</span>
-                                    </div>
+                            <div class="card-body">
+                                <div id="lotesTableContainer" class="text-center py-4">
+                                    <div class="spinner-border text-success" role="status"></div>
                                     <p class="mt-2">Cargando lotes...</p>
                                 </div>
                             </div>
@@ -100,227 +55,279 @@ class LotesComponent {
                     </div>
                 </div>
             </div>
+
+            <!-- Modal para crear/editar lote -->
+            <div class="modal fade" id="loteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="loteModalTitle">Nuevo Lote</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="loteForm">
+                                <div class="mb-3">
+                                    <label for="id_finca" class="form-label">Finca *</label>
+                                    <select class="form-control" id="id_finca" required>
+                                        <option value="">Seleccionar finca...</option>
+                                        ${this.fincas.map(f => `<option value="${f.id_finca}">${f.nombre}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">Nombre del Lote *</label>
+                                    <input type="text" class="form-control" id="nombre" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="ubicacion" class="form-label">Ubicación *</label>
+                                    <textarea class="form-control" id="ubicacion" rows="2" placeholder="Ejemplo: Sector norte, cerca del río" required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="num_lineas" class="form-label">Número de Líneas *</label>
+                                    <input type="number" class="form-control" id="num_lineas" min="1" required placeholder="Ej: 10">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-success" id="btnGuardarLote">
+                                <i class="fas fa-save me-1"></i> Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
+
+        // ✅ eliminar posibles backdrops residuales
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
     }
 
-    async renderTable() {
-        const tableContainer = this.container.querySelector('#lotes-table-container');
-        if (!tableContainer) return;
+    bindEvents() {
+        console.log('🔗 Bind events - Lotes');
+        this.removeEventListeners();
 
-        if (this.filteredLotes.length === 0) {
-            tableContainer.innerHTML = `
-                <div class="text-center py-5">
-                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                    <h4>No hay lotes registrados</h4>
-                    <p class="text-muted">Comienza agregando un nuevo lote.</p>
-                    <button class="btn btn-primary" id="btnEmptyCreate">
-                        <i class="fas fa-plus me-2"></i>
-                        Crear Primer Lote
+        document.getElementById('btnNuevoLote')?.addEventListener('click', () => this.openLoteModal());
+        document.getElementById('btnGuardarLote')?.addEventListener('click', () => this.guardarLote());
+        this.container.addEventListener('click', (e) => this.handleContainerClick(e));
+    }
+
+    removeEventListeners() {
+        ['btnNuevoLote', 'btnGuardarLote'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.replaceWith(btn.cloneNode(true));
+        });
+    }
+
+    async loadLotes() {
+        try {
+            const lotes = await LoteService.getLotes();
+            this.renderLotesTable(lotes);
+        } catch (error) {
+            this.showError('Error cargando lotes: ' + error.message);
+        }
+    }
+
+    renderLotesTable(lotes) {
+        const container = document.getElementById('lotesTableContainer');
+
+        if (!lotes || lotes.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No hay lotes registrados.
+                    <button class="btn btn-sm btn-success ms-2" id="btnNuevoLote">
+                        <i class="fas fa-plus me-1"></i> Crear primer lote
                     </button>
                 </div>
             `;
             return;
         }
 
-        tableContainer.innerHTML = `
+        container.innerHTML = `
             <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                    <thead class="table-dark">
+                <table class="table table-bordered table-hover table-striped align-middle">
+                    <thead class="table-success">
                         <tr>
                             <th>ID</th>
                             <th>Nombre</th>
+                            <th>Finca</th>
                             <th>Ubicación</th>
                             <th>N° Líneas</th>
-                            <th>Finca</th>
-                            <th>Acciones</th>
+                            <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${this.filteredLotes.map(lote => `
-                            <tr>
-                                <td>${lote.id_lote}</td>
-                                <td><strong>${this.escapeHtml(lote.nombre)}</strong></td>
-                                <td>${this.escapeHtml(lote.ubicacion)}</td>
-                                <td><span class="badge bg-info">${lote.num_lineas}</span></td>
-                                <td><span class="badge bg-secondary">${lote.finca_nombre || `Finca ${lote.id_finca}`}</span></td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-warning btn-edit" data-id="${lote.id_lote}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-danger btn-delete" data-id="${lote.id_lote}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
+                        ${lotes.map(lote => {
+            const finca = this.fincas.find(f => f.id_finca == lote.id_finca);
+            return `
+                                <tr>
+                                    <td>${lote.id_lote}</td>
+                                    <td><strong>${lote.nombre}</strong></td>
+                                    <td>${finca ? finca.nombre : 'N/A'}</td>
+                                    <td>${lote.ubicacion || '-'}</td>
+                                    <td>${lote.num_lineas || '-'}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-info btn-editar" data-id="${lote.id_lote}" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger btn-eliminar" data-id="${lote.id_lote}" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+        }).join('')}
                     </tbody>
                 </table>
             </div>
         `;
     }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    setupEventListeners() {
-        // Event delegation para todos los botones
-        this.container.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (!target) return;
-
-            if (target.id === 'btnNuevoLote' || target.id === 'btnEmptyCreate') {
-                this.showLoteForm();
-            }
-
-            if (target.classList.contains('btn-edit')) {
-                const id = target.getAttribute('data-id');
-                this.editLote(parseInt(id));
-            }
-
-            if (target.classList.contains('btn-delete')) {
-                const id = target.getAttribute('data-id');
-                this.deleteLote(parseInt(id));
-            }
-        });
-
-        // Búsqueda
-        const searchInput = this.container.querySelector('#searchInput');
-        const btnSearch = this.container.querySelector('#btnSearch');
-
-        const performSearch = () => {
-            const searchTerm = searchInput.value.toLowerCase();
-            this.filteredLotes = this.lotes.filter(lote =>
-                lote.nombre.toLowerCase().includes(searchTerm) ||
-                lote.ubicacion.toLowerCase().includes(searchTerm) ||
-                (lote.finca_nombre && lote.finca_nombre.toLowerCase().includes(searchTerm))
-            );
-            this.renderTable();
-        };
-
-        if (btnSearch) btnSearch.addEventListener('click', performSearch);
-        if (searchInput) {
-            searchInput.addEventListener('input', performSearch);
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') performSearch();
-            });
+    handleContainerClick(e) {
+        if (e.target.closest('.btn-editar')) {
+            const id = e.target.closest('.btn-editar').dataset.id;
+            this.editarLote(id);
+        }
+        if (e.target.closest('.btn-eliminar')) {
+            const id = e.target.closest('.btn-eliminar').dataset.id;
+            this.eliminarLote(id);
         }
     }
 
-    async showLoteForm(lote = null) {
-        const isEdit = !!lote;
+    async openLoteModal(lote = null) {
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 
+        this.loteEditando = lote;
+        const modalEl = document.getElementById('loteModal');
+        const modal = new bootstrap.Modal(modalEl);
+        const title = document.getElementById('loteModalTitle');
+        const form = document.getElementById('loteForm');
+
+        if (lote) {
+            title.textContent = 'Editar Lote';
+            document.getElementById('id_finca').value = lote.id_finca || '';
+            document.getElementById('nombre').value = lote.nombre || '';
+            document.getElementById('ubicacion').value = lote.ubicacion || '';
+            document.getElementById('num_lineas').value = lote.num_lineas || '';
+        } else {
+            title.textContent = 'Nuevo Lote';
+            form.reset();
+        }
+
+        modal.show();
+    }
+
+    async guardarLote() {
         try {
-            const { value: formValues } = await Swal.fire({
-                title: isEdit ? 'Editar Lote' : 'Nuevo Lote',
-                html: `
-                    <form id="loteForm">
-                        <div class="mb-3">
-                            <label for="id_finca" class="form-label">Finca *</label>
-                            <select class="form-select" id="id_finca" required>
-                                <option value="">Seleccionar finca...</option>
-                                ${this.fincas.map(finca => `
-                                    <option value="${finca.id_finca}" ${isEdit && lote.id_finca === finca.id_finca ? 'selected' : ''}>
-                                        ${this.escapeHtml(finca.nombre)}
-                                    </option>
-                                `).join('')}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="nombre" class="form-label">Nombre del Lote *</label>
-                            <input type="text" class="form-control" id="nombre" value="${isEdit ? this.escapeHtml(lote.nombre) : ''}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="ubicacion" class="form-label">Ubicación *</label>
-                            <input type="text" class="form-control" id="ubicacion" value="${isEdit ? this.escapeHtml(lote.ubicacion) : ''}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="num_lineas" class="form-label">Número de Líneas *</label>
-                            <input type="number" class="form-control" id="num_lineas" value="${isEdit ? lote.num_lineas : ''}" min="1" required>
-                        </div>
-                    </form>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: isEdit ? 'Actualizar' : 'Crear',
-                cancelButtonText: 'Cancelar',
-                preConfirm: () => {
-                    const id_finca = document.getElementById('id_finca').value;
-                    const nombre = document.getElementById('nombre').value;
-                    const ubicacion = document.getElementById('ubicacion').value;
-                    const num_lineas = document.getElementById('num_lineas').value;
+            const formData = {
+                id_finca: parseInt(document.getElementById('id_finca').value),
+                nombre: document.getElementById('nombre').value.trim(),
+                ubicacion: document.getElementById('ubicacion').value.trim(),
+                num_lineas: parseInt(document.getElementById('num_lineas').value),
+            };
 
-                    if (!id_finca || !nombre || !ubicacion || !num_lineas) {
-                        Swal.showValidationMessage('Todos los campos son obligatorios');
-                        return false;
-                    }
-
-                    if (num_lineas < 1) {
-                        Swal.showValidationMessage('El número de líneas debe ser mayor a 0');
-                        return false;
-                    }
-
-                    return {
-                        id_finca: parseInt(id_finca),
-                        nombre: nombre.trim(),
-                        ubicacion: ubicacion.trim(),
-                        num_lineas: parseInt(num_lineas)
-                    };
-                }
-            });
-
-            if (formValues) {
-                if (isEdit) {
-                    await LoteService.updateLote(lote.id_lote, formValues);
-                    Swal.fire('¡Actualizado!', 'Lote actualizado correctamente.', 'success');
-                } else {
-                    await LoteService.createLote(formValues);
-                    Swal.fire('¡Creado!', 'Lote creado correctamente.', 'success');
-                }
-                await this.loadData();
+            if (!formData.id_finca || !formData.nombre || !formData.ubicacion || !formData.num_lineas) {
+                this.showError('Todos los campos marcados con * son obligatorios.');
+                return;
             }
+
+            const btnGuardar = document.getElementById('btnGuardarLote');
+            btnGuardar.disabled = true;
+            btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
+
+            if (this.loteEditando) {
+                await LoteService.updateLote(this.loteEditando.id_lote, formData);
+                this.showSuccess('Lote actualizado correctamente.');
+            } else {
+                await LoteService.createLote(formData);
+                this.showSuccess('Lote creado correctamente.');
+            }
+
+            // ✅ Cerrar modal y limpiar backdrop
+            const modalEl = document.getElementById('loteModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            document.body.classList.remove('modal-open');
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+            await this.loadLotes();
         } catch (error) {
-            Swal.fire('Error', error.message, 'error');
+            this.showError('Error guardando lote: ' + error.message);
+        } finally {
+            const btnGuardar = document.getElementById('btnGuardarLote');
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
         }
     }
 
-    async editLote(id) {
+    async editarLote(id) {
         try {
-            const lote = await LoteService.getLote(id);
-            await this.showLoteForm(lote);
+            const lotes = await LoteService.getLotes();
+            const lote = lotes.find(l => l.id_lote == id);
+            if (lote) this.openLoteModal(lote);
+            else this.showError('Lote no encontrado.');
         } catch (error) {
-            Swal.fire('Error', error.message, 'error');
+            this.showError('Error cargando lote: ' + error.message);
         }
     }
 
-    async deleteLote(id) {
-        const lote = this.lotes.find(l => l.id_lote === id);
-        if (!lote) return;
-
+    async eliminarLote(id) {
         try {
             const result = await Swal.fire({
                 title: '¿Estás seguro?',
-                text: `¿Quieres eliminar el lote "${lote.nombre}"? Esta acción no se puede deshacer.`,
+                text: 'Esta acción eliminará el lote permanentemente.',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
             });
 
             if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Eliminando...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
+
                 await LoteService.deleteLote(id);
-                Swal.fire('¡Eliminado!', 'El lote ha sido eliminado correctamente.', 'success');
-                await this.loadData();
+
+                Swal.fire({
+                    title: '¡Eliminado!',
+                    text: 'El lote ha sido eliminado correctamente.',
+                    icon: 'success',
+                });
+
+                await this.loadLotes();
             }
         } catch (error) {
-            Swal.fire('Error', error.message, 'error');
+            this.showError('Error eliminando lote: ' + error.message);
         }
+    }
+
+    showError(message) {
+        Swal.fire({
+            title: 'Error',
+            text: message,
+            icon: 'error',
+            confirmButtonColor: '#d33',
+        });
+    }
+
+    showSuccess(message) {
+        Swal.fire({
+            title: 'Éxito',
+            text: message,
+            icon: 'success',
+            confirmButtonColor: '#2E7D32',
+        });
     }
 }
 

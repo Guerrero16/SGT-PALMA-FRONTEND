@@ -1,6 +1,8 @@
+import DashboardService from './services/dashboardService.js';
 import AuthService from './services/auth.js';
 import EmpresasComponent from './components/empresas.js';
 import FincasComponent from './components/fincas.js';
+import LotesComponent from './components/lotes.js'; // 👈 nuevo
 
 class Dashboard {
     constructor() {
@@ -17,13 +19,10 @@ class Dashboard {
 
         this.loadUserData();
         this.setupNavigation();
-
-        // Cargar módulo por defecto (dashboard)
         await this.loadDashboardModule();
     }
 
     setupNavigation() {
-        // Configurar eventos de navegación
         document.addEventListener('click', (e) => {
             if (e.target.closest('[onclick*="loadModule"]')) {
                 e.preventDefault();
@@ -36,15 +35,15 @@ class Dashboard {
     async loadModule(moduleName) {
         const contentArea = document.querySelector('.content-wrapper .container-fluid');
 
-        // Remover módulo actual
+        // Limpiar contenido anterior
         if (this.currentModule) {
             this.currentModule = null;
+            contentArea.innerHTML = '';
         }
 
-        // Actualizar navegación activa
+        // Actualizar menú activo
         this.updateActiveNav(moduleName);
 
-        // Cargar módulo específico
         switch (moduleName) {
             case 'empresas':
                 this.currentModule = new EmpresasComponent();
@@ -56,6 +55,11 @@ class Dashboard {
                 await this.currentModule.init(contentArea);
                 break;
 
+            case 'lotes': // 👈 nuevo caso
+                this.currentModule = new LotesComponent();
+                await this.currentModule.init(contentArea);
+                break;
+
             default:
                 await this.loadDashboardModule();
                 break;
@@ -63,18 +67,107 @@ class Dashboard {
     }
 
     async loadDashboardModule() {
-        // Mantener el dashboard original
-        console.log('Cargando dashboard...');
+        console.log('Cargando dashboard principal...');
         this.updateActiveNav('dashboard');
+
+        try {
+            const resumen = await DashboardService.getResumen();
+            const pagosMetodo = await DashboardService.getPagosPorMetodo();
+            const evolucion = await DashboardService.getEvolucionMensual();
+            const liquidaciones = await DashboardService.getLiquidacionesPorEstado();
+
+            // Totales principales
+            document.getElementById('totalTrabajadores').textContent = resumen.trabajadores || 0;
+            document.getElementById('liquidaciones').textContent = resumen.liquidaciones || 0;
+            document.getElementById('adelantos').textContent = resumen.adelantos || 0;
+            document.getElementById('pagos').textContent = resumen.pagos || 0;
+
+            // Dibujar gráficos
+            this.renderChartPagos(pagosMetodo);
+            this.renderChartEvolucion(evolucion);
+            this.renderChartEstados(liquidaciones);
+
+        } catch (error) {
+            console.error('Error cargando dashboard:', error);
+        }
+    }
+    renderChartPagos(data) {
+        const ctx = document.getElementById('estadoTrabajosChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: data.map(d => d.metodo || d.name),
+                datasets: [{
+                    data: data.map(d => d.total),
+                    backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
+                }]
+            },
+            options: { responsive: true }
+        });
     }
 
+    renderChartEvolucion(data) {
+        const ctx = document.getElementById('produccionChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.mes),
+                datasets: [{
+                    label: 'Pagos ($)',
+                    data: data.map(d => d.total),
+                    borderColor: '#007bff',
+                    fill: true,
+                    backgroundColor: 'rgba(0, 123, 255, 0.2)'
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+
+    renderChartEstados(data) {
+        const ctx = document.getElementById('estadoTrabajosChart').getContext('2d');
+
+        // 🔥 Si ya existe un gráfico previo en este canvas, destrúyelo
+        if (this.estadoChart) {
+            this.estadoChart.destroy();
+        }
+
+        // 💡 Crear el nuevo gráfico y guardarlo en la propiedad de la clase
+        this.estadoChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.5)',
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(255, 206, 86, 0.5)',
+                        'rgba(54, 162, 235, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(54, 162, 235, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+
+
     updateActiveNav(activeModule) {
-        // Remover clase active de todos los items
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
 
-        // Agregar active al item actual
         const activeLink = document.querySelector(`[onclick*="'${activeModule}'"]`);
         if (activeLink) {
             activeLink.classList.add('active');
@@ -95,24 +188,15 @@ class Dashboard {
     }
 }
 
-// Inicializar dashboard
-document.addEventListener('DOMContentLoaded', () => {
-    new Dashboard();
-});
-
-// Exponer función global para navegación
-window.loadModule = function (moduleName) {
-    const dashboard = document.querySelector('script[src*="dashboard.js"]')?.__dashboard_instance;
-    if (dashboard) {
-        dashboard.loadModule(moduleName);
-    }
-};
-
-// Guardar instancia para acceso global
+// Inicializar dashboard y exponer instancia global
 document.addEventListener('DOMContentLoaded', () => {
     const dashboard = new Dashboard();
     const script = document.querySelector('script[src*="dashboard.js"]');
-    if (script) {
-        script.__dashboard_instance = dashboard;
-    }
+    if (script) script.__dashboard_instance = dashboard;
 });
+
+window.loadModule = (moduleName) => {
+    const dashboard = document.querySelector('script[src*="dashboard.js"]')?.__dashboard_instance;
+    if (dashboard) dashboard.loadModule(moduleName);
+};
+window.authService = AuthService;
